@@ -1,0 +1,55 @@
+image: diag.png
+resolution: 0.1
+publish_robots_gt: true
+robots:
+  - name: robot_1
+    robot_in_world: [18, -25, 0]
+    robot_radius: 0.5
+    scanners:
+      - name: laser_1
+        scanner_in_robot: [1, 0, 0]
+        scanner_radius: 0.5
+        scanner_freq: 30
+    landmark_scanners:
+      - name: landmark_scanner_1
+        scanner_in_robot: [0.5, 0, 0]
+        scanner_radius: 0.5
+        scanner_freq: 15
+  - name: robot_2
+    robot_in_world: [15, -50, 0]
+    robot_radius: 0.6
+    scanners:
+      - name: laser_2
+        scanner_in_robot: [1, 0, 0]
+        scanner_radius: 0.2
+        scanner_freq: 15
+      - name: laser_3
+        scanner_in_robot: [-1, 0, -3.14]
+        scanner_radius: 0.2
+        scanner_freq: 15
+    landmark_scanners:
+      - name: landmark_scanner_2
+        scanner_in_robot: [0.5, 0, 0]
+        scanner_radius: 0.5
+        scanner_freq: 20
+landmarks:
+  - id: 42
+    position: [17, -27]
+  - id: 69
+    position: [16, -40]
+  - id: 12
+    position: [20, -45]
+  - id: 7
+    position: [57, -46]
+  - id: 21
+    position: [4, -49]
+  - id: 100
+    position: [37, -50]
+  - id: 101
+    position: [36, -65]
+  - id: 420
+    position: [12, -66]
+  - id: 11
+    position: [9, -87]
+  - id: 2
+    position: [22, -100]
