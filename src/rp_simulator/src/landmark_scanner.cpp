@@ -11,12 +11,15 @@ LandmarkScanner::LandmarkScanner(WorldItem& par, const std::string& ns,
       _period(1. / f),
       _tf_broadcaster(node),
       _range_max(range_max) {
+  // TODO_1
   // Initialize publisher for LandmarkArray messages
-  // _landmark_pub =  // TODO_1 (topic_name must be = _namespace +
-  // "/landmarks");
+  _landmark_pub = _node->create_publisher<rp_commons::msg::LandmarkArray>(
+      _namespace + "/landmarks", 10);
 
+  // TODO_2
   // Initialize publisher for Marker messages
-  // _marker_pub =  // TODO_2 (check rviz_configs directory for topic_name);
+  _marker_pub = _node->create_publisher<visualization_msgs::msg::MarkerArray>(
+      _namespace + "/landmark_markers", 10);
 
   // Get the world pointer
   WorldItem* w = this;
@@ -40,18 +43,25 @@ void LandmarkScanner::detectLandmarks() {
   _points.clear();
 
   // TODO_2: Get the global pose of the scanner
+  Eigen::Isometry2f gp = globalPose();
+  Eigen::Vector2f p = gp.translation();
 
   // Iterate over all landmarks and add those within range to the list
   for (size_t i = 0; i < _world->landmarks().size(); ++i) {
     // TODO_3: Get the landmark position and calculate the distance to the
     // landmark
-    float distance = 0.0;
+    Eigen::Vector2f l = _world->landmarks()[i];
+    float distance = (l - p).norm();
     if (distance < _range_max) {
       _ids.push_back(_world->landmarkIds()[i]);
       // TODO_4: transform the landmark position to the scanner frame (inverse
       // of the global pose * landmark position)
+      Eigen::Vector2d l_in_sensor = (gp.inverse() * l).cast<double>();
       geometry_msgs::msg::Point point;
       // TODO_5: Set the x and y coordinates of the point
+      point.x = l_in_sensor.x();
+      point.y = l_in_sensor.y();
+      point.z = 0.0;
       _points.push_back(point);
     }
   }
@@ -64,6 +74,8 @@ void LandmarkScanner::publishLandmarks(rclcpp::Time time_now) {
   msg.header.stamp = time_now;
   // TODO_6: Set the landmarks field of the message (check the
   // LandmarkArray.msg file)
+  msg.ids = _ids;
+  msg.points = _points;
 
   _landmark_pub->publish(msg);
 
@@ -107,8 +119,18 @@ void LandmarkScanner::publishLandmarks(rclcpp::Time time_now) {
   for (size_t i = 0; i < _ids.size(); ++i) {
     visualization_msgs::msg::Marker marker;
     // TODO_7: Set the marker properties
-    // (https://docs.ros2.org/galactic/api/visualization_msgs/msg/Marker.html)
-
+    // (https://docs.ros2.org/galactic/api/visualization_msgs/msg/Marker.html)marker.header.frame_id
+    // = _namespace;
+    marker.header.stamp = time_now;
+    marker.ns = _namespace;
+    marker.id = _ids[i];
+    marker.type = visualization_msgs::msg::Marker::SPHERE;
+    marker.action = visualization_msgs::msg::Marker::ADD;
+    marker.pose.position = _points[i];
+    marker.scale.x = 1;
+    marker.scale.y = 1;
+    marker.scale.z = 1;
+    marker.color = _marker_color;  // Use the randomly chosen color
     marker_array.markers.push_back(marker);
   }
   _marker_pub->publish(marker_array);
@@ -117,22 +139,32 @@ void LandmarkScanner::publishLandmarks(rclcpp::Time time_now) {
 void LandmarkScanner::tick(float dt, rclcpp::Time time_now) {
   // TODO_8: Complete the tick function (take inspiration from the
   // LaserScanner class)
+  _elapsed_time += dt;
+  _new_landmarks = false;
+  if (_elapsed_time < _period) return;
+
+  detectLandmarks();
+  _elapsed_time = 0;
+  _new_landmarks = true;
+
+  publishLandmarks(time_now);
 }
 
 void LandmarkScanner::draw(Canvas& canvas) const {
   Eigen::Isometry2f gp = globalPose();
 
   for (size_t i = 0; i < _ids.size(); ++i) {
-    Eigen::Vector2f l_in_sensor =
-        Eigen::Vector2f::Zero();  // TODO_9: Get the landmark position in the
-                                  //  scanner frame;
+    Eigen::Vector2f l_in_sensor = Eigen::Vector2f(
+        _points[i].x,
+        _points[i].y);  // TODO_9: Get the landmark position in the
+                        //  scanner frame;
     Eigen::Vector2f l_in_world =
-        Eigen::Vector2f::Zero();  // TODO_10: Get the landmark position in the
-                                  //  world frame;
+        gp * l_in_sensor;  // TODO_10: Get the landmark position in the
+                           //  world frame;
     Eigen::Vector2i l_px =
-        Eigen::Vector2i::Zero();  // TODO_11: Convert the landmark position to
-                                  // pixel
-                                  //  coordinates;
+        _grid_map->worldToGrid(l_in_world);  // TODO_11: Convert the landmark
+                                             // position to pixel
+                                             //  coordinates;
     drawSquareFilled(canvas, l_px, 5, 90);
   }
 }
